@@ -1,0 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+.btn-1:hover {
+    transform: scale(0.95);
+}
+
+.btn-1 {
+    transition: 0.4s;
+}
+
+.nav-home {
+    background-image: linear-gradient(to right, #0082c8, #0082c8);
+}
+
+/* ContactList.jsx */
+.hover-btn {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  overflow: hidden;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
+}
+
+.text-Log {
+    transition: 0.1s;
+    font-size: 8px;
+}
+
+.hover-btn .text-Log {
+    visibility: hidden;
+}
+
+.icon-Log {
+    position: absolute;
+}
+
+.hover-btn:hover .icon-Log {
+    visibility: hidden;
+}
+
+.hover-btn:hover{
+    width: 120px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0);
+    background-image: linear-gradient(to bottom, rgb(189, 189, 189), rgb(243, 243, 243));
+}
+
+.hover-btn:hover .text-Log{
+    visibility: visible;
+    /* transform: scale(1); */
+    /* transform: translateY(10px); */
+    font-size: 16px;
+    transition-delay: 0.1s;
+    
+}
+
+
+
+/* Độ rộng thanh cuộn */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+/* Nền thanh cuộn */
+::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+/* Thanh kéo */
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 6px;
+}
+
+/* Nút cuộn lên */
+::-webkit-scrollbar-button:vertical:start:decrement {
+  height: 20px;
+  background: transparent;
+  border-radius: 4px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid #555; /* tam giác hướng lên */
+}
+
+/* Nút cuộn xuống */
+::-webkit-scrollbar-button:vertical:end:increment {
+  height: 20px;
+  background: transparent;
+  border-radius: 4px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 10px solid #555; /* tam giác hướng xuống */
+}
+
+input:focus {
+    outline: none;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.fontC {
+  font-family: "Poppins", sans-serif;
+}
+
+/* avatarr */
+.cardAvatar {
+  position: relative;
+  display: inline-block;
+}
+
+.iconChangeAvatar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 25px;
+  color: white;
+  visibility: hidden;
+  /* opacity: 0; */
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.cardAvatar:hover .iconChangeAvatar {
+  color: #000;
+  visibility: visible;
+  /* opacity: 1; */
+  transform: translate(-65%, -50%) scale(1.1);
+}
+
+.cardAvatar:hover img{
+  opacity: 0.4;
+}
+
+.hero {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(#e7baff, #c2b6d9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#drop-area {
+    width: 500px;
+    height: 300px;
+    padding: 30px;
+    background: #fff;
+    text-align: center;
+    border-radius: 20px;
+}
+
+#icon-view {
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    border: 2px dashed #bbb5ff;
+    background: #f7f8ff;
+    background-position: center;
+    background-size: cover;
+}
+
+#icon-view i {
+    font-size: 100px;
+    margin-top: 70px;
+}
+
+#icon-view span {
+    display: block;
+    font-size: 12px;
+    color: #777;
+    margin-top: 15px;
+}
+
+.inputA:placeholder-shown {
+  color: rgb(156, 156, 156);         /* đổi màu chữ placeholder */
+  font-style: italic;  /* kiểu chữ nghiêng */
+  opacity: 1;          /* độ mờ (mặc định placeholder thường hơi mờ) */
+}
+
+.inputA:not(:placeholder-shown) {
+  color: black;
+  font-weight: 600;
+}
+
+.inputA:focus {
+  color: #007bff;
+  border-color: #007bff;
+  outline: white;
+}
+
+.bgLout {
+  background-image: linear-gradient(to bottom, #fdfbfb, #ebedee);
+  font-size: 18px;
+  transition: 0.5s;
+}
+
+.bgLout:hover {
+  transform: scale(0.95);
+  font-size: 17px;
+  background-image: linear-gradient(to bottom, #ebedee, #fdfbfb);
+}

@@ -1,25 +1,32 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import ContactForm from "./ContactForm";
+import UserProfile from "./UserProfile"; // Import trang cá nhân
+import Sidebar from "./Sidebar"; // Import Sidebar mới tách ra
 import { FaRegTrashAlt, FaRegEdit, FaStar, FaCaretDown } from "react-icons/fa";
-import { BsPlus } from "react-icons/bs";
-import { PiTagSimpleFill } from "react-icons/pi";
 import { LuImageUp } from "react-icons/lu";
 import { CiCircleRemove } from "react-icons/ci";
+import { PiTagSimpleFill } from "react-icons/pi";
 import { toast } from "react-toastify";
 import "../assets/ContactBook.css";
 
 // Domain backend
 const BACKEND_URL = "http://localhost:4000";
 
-export default function ContactsList({ setUser }) {
-  // State
+export default function ContactsList({ user, setUser }) {
+  // --- STATE QUẢN LÝ DỮ LIỆU ---
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // State quản lý giao diện: "contacts" (Danh bạ) hoặc "profile" (Thông tin cá nhân)
+  const [viewMode, setViewMode] = useState("contacts"); 
+
   const [selectedContact, setSelectedContact] = useState(null);
   const [editingContact, setEditingContact] = useState(null);
   const [search, setSearch] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
+  
+  // State bộ lọc & Nhóm
   const [filter, setFilter] = useState("thongthuong");
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [showContactGroupDropdown, setShowContactGroupDropdown] = useState(false);
@@ -27,24 +34,17 @@ export default function ContactsList({ setUser }) {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [nameGroup, setNameGroup] = useState("Nhóm");
 
-  // State cho modal upload avatar
+  // State cho modal upload avatar (Contact)
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [modalAvatarPreview, setModalAvatarPreview] = useState(null);
   const [modalAvatarFile, setModalAvatarFile] = useState(null);
 
   const groupColors = {
-    "Bạn bè": "#00FFFF",
-    "Người thân": "#FF0000",
-    "Gia đình": "#FF69B4",
-    "Khách hàng": "#00FF00",
-    Sếp: "#0000FF",
-    "Đồng nghiệp": "#FF8C00",
+    "Bạn bè": "#00FFFF", "Người thân": "#FF0000", "Gia đình": "#FF69B4",
+    "Khách hàng": "#00FF00", Sếp: "#0000FF", "Đồng nghiệp": "#FF8C00",
   };
 
-
-  
-
-  // Tải danh sách liên hệ
+  // --- API CALLS ---
   const fetchContacts = async () => {
     try {
       setLoading(true);
@@ -58,6 +58,7 @@ export default function ContactsList({ setUser }) {
           : `${BACKEND_URL}/imgA/avatarDefault.png`,
       }));
       setContacts(updatedContacts);
+      // Cập nhật lại contact đang chọn nếu có thay đổi
       if (selectedContact) {
         const updatedSelected = updatedContacts.find((c) => c.id === selectedContact.id);
         if (updatedSelected) setSelectedContact(updatedSelected);
@@ -74,7 +75,8 @@ export default function ContactsList({ setUser }) {
     fetchContacts();
   }, []);
 
-  // Xóa liên hệ
+  // --- HANDLERS (Xử lý sự kiện) ---
+
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa liên hệ này?")) return;
     try {
@@ -84,266 +86,82 @@ export default function ContactsList({ setUser }) {
       setEditingContact(null);
       fetchContacts();
     } catch (err) {
-      console.error("Lỗi xóa liên hệ:", err);
       toast.error("Lỗi khi xóa!");
     }
   };
 
-  // Chuyển đổi trạng thái yêu thích
   const handleToggleFavourite = async (contact) => {
-    const updatedFavourite = contact.favourite ? 0 : 1;
-    const updatedContact = { ...contact, favourite: updatedFavourite === 1 };
     try {
-      await API.put(`/contacts/${contact.id}`, { favourite: updatedFavourite });
+      await API.put(`/contacts/${contact.id}`, { favourite: contact.favourite ? 0 : 1 });
       toast.success("Cập nhật yêu thích thành công!");
-      setContacts(contacts.map((c) => (c.id === contact.id ? updatedContact : c)));
-      setSelectedContact(updatedContact);
+      fetchContacts();
     } catch (err) {
-      console.error("Lỗi cập nhật yêu thích:", err);
       toast.error("Lỗi khi cập nhật yêu thích!");
     }
   };
 
-  // Chuyển đổi nhóm liên hệ
   const handleToggleGroup = async (contact, group) => {
     const updatedGroups = contact.groups_lh.includes(group)
       ? contact.groups_lh.filter((g) => g !== group)
       : [...contact.groups_lh, group];
-    const updatedContact = { ...contact, groups_lh: updatedGroups };
     try {
       await API.put(`/contacts/${contact.id}`, { groups_lh: JSON.stringify(updatedGroups) });
       toast.success("Cập nhật nhóm thành công!");
-      setContacts(contacts.map((c) => (c.id === contact.id ? updatedContact : c)));
-      setSelectedContact(updatedContact);
+      fetchContacts();
     } catch (err) {
-      console.error("Lỗi cập nhật nhóm:", err);
       toast.error("Lỗi khi cập nhật nhóm!");
     }
   };
 
-  // Xử lý chọn ảnh từ File Explorer trong chi tiết liên hệ
-  const handleUploadAvatar = () => {
-    if (!selectedContact) {
-      toast.error("Vui lòng chọn một liên hệ trước!");
-      return;
-    }
-    setShowAvatarModal(true);
-    setModalAvatarPreview(selectedContact.link_img);
-    setModalAvatarFile(null);
-  };
-
-  // Xử lý kéo thả ảnh trong chi tiết liên hệ
-  const handleDrop = (e) => {
-    e.preventDefault();
-    if (!selectedContact) {
-      toast.error("Vui lòng chọn một liên hệ trước!");
-      return;
-    }
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      setModalAvatarFile(file);
-      setModalAvatarPreview(URL.createObjectURL(file));
-      setShowAvatarModal(true);
-    } else {
-      toast.warning("Vui lòng kéo thả file ảnh!");
-    }
-  };
-
-  // Ngăn mặc định khi kéo thả trong chi tiết liên hệ
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  // Xử lý dán ảnh từ clipboard trong chi tiết liên hệ
-  const handlePaste = (e) => {
-    if (!selectedContact) {
-      toast.error("Vui lòng chọn một liên hệ trước!");
-      return;
-    }
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.kind === "file" && item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        setModalAvatarFile(file);
-        setModalAvatarPreview(URL.createObjectURL(file));
-        setShowAvatarModal(true);
-        return;
-      }
-    }
-    toast.warning("Dữ liệu dán không phải là ảnh!");
-  };
-
-  // Đặt lại avatar mặc định
-  const handleRemoveAvatar = async () => {
-    if (!selectedContact) {
-      toast.error("Vui lòng chọn một liên hệ trước!");
-      return;
-    }
-    try {
-      const res = await API.put(`/contacts/${selectedContact.id}`, {
-        link_img: "/imgA/avatarDefault.png",
-      });
-      const updatedContact = {
-        ...selectedContact,
-        link_img: "/imgA/avatarDefault.png",
-        groups_lh: res.data.groups_lh ? JSON.parse(res.data.groups_lh) : [],
-      };
-      setContacts(contacts.map((c) => (c.id === selectedContact.id ? updatedContact : c)));
-      setSelectedContact(updatedContact);
-      fetchContacts();
-      toast.success("Đã đặt lại avatar mặc định!");
-    } catch (err) {
-      console.error("Lỗi đặt lại avatar:", err.response?.data || err.message);
-      toast.error(`Lỗi khi đặt lại avatar: ${err.response?.data?.message || err.message}`);
-    }
-  };
-
-  // Xử lý chọn ảnh từ File Explorer trong modal
-  const handleModalAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      setModalAvatarFile(file);
-      setModalAvatarPreview(URL.createObjectURL(file));
-    } else {
-      toast.warning("Vui lòng chọn file ảnh!");
-    }
-  };
-
-  // Xử lý kéo thả ảnh trong modal
-  const handleModalDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      setModalAvatarFile(file);
-      setModalAvatarPreview(URL.createObjectURL(file));
-    } else {
-      toast.warning("Vui lòng kéo thả file ảnh!");
-    }
-  };
-
-  // Ngăn mặc định khi kéo thả trong modal
-  const handleModalDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  // Xử lý dán ảnh từ clipboard trong modal
-  const handleModalPaste = (e) => {
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.kind === "file" && item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        setModalAvatarFile(file);
-        setModalAvatarPreview(URL.createObjectURL(file));
-        return;
-      }
-    }
-    toast.warning("Dữ liệu dán không phải là ảnh!");
-  };
-
-  // Xóa ảnh trong modal
-  const handleModalRemoveAvatar = () => {
-    setModalAvatarFile(null);
-    setModalAvatarPreview(null);
-  };
-
-  // Upload ảnh từ modal
+  // --- LOGIC MODAL UPLOAD AVATAR ---
   const handleModalUpload = async () => {
     if (!selectedContact || !modalAvatarFile) {
-      toast.error("Vui lòng chọn một liên hệ và ảnh để upload!");
+      toast.error("Vui lòng chọn ảnh!");
       return;
     }
-
     const formData = new FormData();
     formData.append("avatar", modalAvatarFile);
-
     try {
-      const res = await API.put(`/contacts/${selectedContact.id}`, formData, {
+      await API.put(`/contacts/${selectedContact.id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      const updatedContact = {
-        ...selectedContact,
-        link_img: res.data.link_img || "/imgA/avatarDefault.png",
-        groups_lh: res.data.groups_lh ? JSON.parse(res.data.groups_lh) : [],
-      };
-      setContacts(contacts.map((c) => (c.id === selectedContact.id ? updatedContact : c)));
-      setSelectedContact(updatedContact);
       fetchContacts();
       setShowAvatarModal(false);
       setModalAvatarFile(null);
       setModalAvatarPreview(null);
       toast.success("Cập nhật avatar thành công!");
     } catch (err) {
-      console.error("Lỗi cập nhật avatar:", err.response?.data || err.message);
-      toast.error(`Lỗi khi cập nhật avatar: ${err.response?.data?.message || err.message}`);
+      toast.error("Lỗi khi cập nhật avatar!");
     }
   };
 
-  // Chọn liên hệ
-  const handleSelectContact = (contact) => {
-    setSelectedContact(contact);
-    setEditingContact(null);
-    setIsAddingNew(false);
-    setShowContactGroupDropdown(false);
+  const handleModalRemoveAvatar = () => {
+      setModalAvatarFile(null);
+      setModalAvatarPreview(null);
   };
 
-  // Thêm liên hệ mới
-  const handleAddNew = () => {
-    setIsAddingNew(true);
-    setSelectedContact(null);
-    setEditingContact(null);
-    setShowContactGroupDropdown(false);
-  };
-
-  // Sửa liên hệ
-  const handleEdit = (contact) => {
-    setEditingContact(contact);
-    setIsAddingNew(false);
-    setShowContactGroupDropdown(false);
-  };
-
-  // Callback khi lưu liên hệ thành công
-  const onSuccess = () => {
-    fetchContacts();
-    setIsAddingNew(false);
-    setEditingContact(null);
-    setSelectedContact(null);
-    setShowContactGroupDropdown(false);
-  };
-
-  // Lọc danh sách liên hệ
+  // --- LOGIC LỌC & SẮP XẾP ---
   const filteredContacts = contacts.filter((c) => {
     const matchesSearch =
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.includes(search) ||
       c.note?.toLowerCase().includes(search.toLowerCase());
-    if (filter === "yeuthich") {
-      return matchesSearch && c.favourite;
-    } else if (filter === "nhom" && selectedGroup) {
-      return matchesSearch && c.groups_lh.includes(selectedGroup);
-    }
+    if (filter === "yeuthich") return matchesSearch && c.favourite;
+    if (filter === "nhom" && selectedGroup) return matchesSearch && c.groups_lh.includes(selectedGroup);
     return matchesSearch;
   });
 
-  // Lấy họ từ tên đầy đủ
   const getLastName = (fullName) => {
     if (!fullName) return "";
     const parts = fullName.trim().split(/\s+/);
     return parts[parts.length - 1];
   };
 
-  // Sắp xếp theo họ (tiếng Việt)
-  const vietnameseSortByLastName = (a, b) => {
-    const normalize = (str) => str.normalize("NFC").toLowerCase().replace(/đ/g, "d");
-    const lastNameA = normalize(getLastName(a.name));
-    const lastNameB = normalize(getLastName(b.name));
-    return lastNameA.localeCompare(lastNameB, "vi", { sensitivity: "base" });
-  };
-
-  // Nhóm liên hệ theo chữ cái đầu của họ
   const groupedContacts = filteredContacts
-    .sort(vietnameseSortByLastName)
+    .sort((a, b) => {
+        const normalize = (str) => str.normalize("NFC").toLowerCase().replace(/đ/g, "d");
+        return normalize(getLastName(a.name)).localeCompare(normalize(getLastName(b.name)), "vi", { sensitivity: "base" });
+    })
     .reduce((acc, contact) => {
       const firstLetter = getLastName(contact.name).charAt(0).toUpperCase().replace("Đ", "D");
       if (!acc[firstLetter]) acc[firstLetter] = [];
@@ -351,419 +169,162 @@ export default function ContactsList({ setUser }) {
       return acc;
     }, {});
 
+  // --- RENDER GIAO DIỆN ---
   return (
     <div className="d-flex flex-row bg-secondary-subtle p-4 gap-4 fontC" style={{ height: "739px" }}>
-      <div className="d-flex flex-column h-100">
-        <div className="w-100 bg-white pb-3 d-flex flex-column rounded-4" style={{ height: "600px" }}>
-          <div className="p-3 pb-0">
-            <h5 className="fw-semibold text-center py-2 fs-3">Sổ tay liên lạc</h5>
-            <div className="d-flex flex-row gap-2">
-              <div className="input-group mb-1">
-                <input
-                  type="text"
-                  className="form-control bg-secondary-subtle rounded-pill"
-                  placeholder="Tìm kiếm"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <div
-                className="d-flex flex-row-reverse justify-content-center align-items-center mb-1 fw-medium pointer"
-                style={{ fontSize: "14px" }}
-                onClick={handleAddNew}
-              >
-                <BsPlus className="fw-bold fs-5" /> Thêm
-              </div>
-            </div>
-            <div className="d-flex mb-1">
-              <div
-                className="pointer p-1"
-                style={{
-                  ...(filter === "thongthuong" ? { color: "#5500ff", fontWeight: 600 } : { color: "#000" }),
-                  fontSize: "14px",
-                }}
-                onClick={() => {
-                  setFilter("thongthuong");
-                  setSelectedGroup(null);
-                  setNameGroup("Nhóm");
-                  setShowGroupDropdown(false);
-                }}
-              >
-                Thông thường
-              </div>
-              <div
-                className="pointer p-1"
-                style={{
-                  ...(filter === "yeuthich" ? { color: "#5500ff", fontWeight: 600 } : { color: "#000" }),
-                  fontSize: "14px",
-                }}
-                onClick={() => {
-                  setFilter("yeuthich");
-                  setSelectedGroup(null);
-                  setNameGroup("Nhóm");
-                  setShowGroupDropdown(false);
-                }}
-              >
-                Yêu thích
-              </div>
-              <div
-                className="ms-auto pointer p-1"
-                style={{ ...(filter === "nhom" ? { color: "#5500ff" } : { color: "#000" }), fontSize: "14px" }}
-                onClick={() => setShowGroupDropdown(!showGroupDropdown)}
-              >
-                {nameGroup} <FaCaretDown className="ms-1" />
-              </div>
-            </div>
-            {showGroupDropdown && (
-              <div
-                className="dropdown-menu d-block position-absolute mb-3 border border-0 bg-secondary-subtle rounded-4 p-1 shadow-lg"
-                style={{ top: "150px", left: "300px" }}
-              >
-                {groups.map((group) => (
-                  <div
-                    key={group}
-                    className="dropdown-item d-flex align-items-center pointer rounded-4 gap-1"
-                    onClick={() => {
-                      setFilter("nhom");
-                      setSelectedGroup(group);
-                      setNameGroup(group);
-                      setShowGroupDropdown(false);
-                    }}
-                  >
-                    <PiTagSimpleFill style={{ color: groupColors[group] }} />
-                    {group}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex-grow-1 overflow-auto px-3" style={{ maxHeight: "calc(100vh - 200px)" }}>
-            {Object.keys(groupedContacts)
-              .sort()
-              .map((letter) => (
-                <div key={letter}>
-                  <div className="p-2 text-dark fw-bold">{letter}</div>
-                  <ul className="list-group list-group-flush gap-2">
-                    {groupedContacts[letter].map((c) => (
-                      <li
-                        key={c.id}
-                        className={`list-group-item list-group-item-action bg-dark bg-gradient bg-opacity-25 fw-medium rounded-pill d-flex align-items-center p-0 px-3${
-                          selectedContact?.id === c.id ? "" : ""
-                        }`}
-                        onClick={() => handleSelectContact(c)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <img
-                          src={c.link_img}
-                          className="rounded-circle me-2"
-                          alt="avatar"
-                          width="30"
-                          height="30"
-                        />
-                        <div className="d-flex flex-column" style={{ fontSize: "14px" }}>
-                          <div className="fw-semibold">{c.name}</div>
-                          <div>
-                            {c.groups_lh.length === 0 ? (
-                              <div className="d-flex">{c.phone}</div>
-                            ) : (
-                              <div className="d-flex flex-row gap-2">
-                                <PiTagSimpleFill style={{ color: groupColors[c.groups_lh[0]], fontSize: "18px" }} />
-                                <div>{c.phone}</div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {c.favourite && <FaStar className="ms-auto fs-5" style={{color: "#f1f111ff"}}/>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            {loading && <li className="list-group-item">Đang tải...</li>}
-            {!loading && Object.keys(groupedContacts).length === 0 && (
-              <li className="list-group-item text-muted">Không tìm thấy liên hệ nào.</li>
-            )}
-          </div>
-        </div>
-        <div className="w-100 p-2">
-          <div className="text-dark shadow text-center p-2 rounded-pill mt-2 bgLout fw-medium pointer" onClick={() => setUser(null)}>
-            Đăng xuất
-          </div>
-        </div>
+      
+      {/* 1. CỘT TRÁI: DÙNG COMPONENT SIDEBAR MỚI */}
+      <div className="d-flex flex-column h-100" style={{ width: "350px", minWidth: "300px" }}>
+         <Sidebar 
+            user={user}
+            logout={() => setUser(null)}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            search={search}
+            setSearch={setSearch}
+            setIsAddingNew={setIsAddingNew}
+            setSelectedContact={setSelectedContact}
+            setEditingContact={setEditingContact}
+            filter={filter}
+            setFilter={setFilter}
+            nameGroup={nameGroup}
+            setNameGroup={setNameGroup}
+            setSelectedGroup={setSelectedGroup}
+            groups={groups}
+            showGroupDropdown={showGroupDropdown}
+            setShowGroupDropdown={setShowGroupDropdown}
+            groupedContacts={groupedContacts}
+            selectedContact={selectedContact}
+         />
       </div>
-      <div className="w-75 d-flex flex-column">
-        <div className="flex-grow-1">
-          {isAddingNew || editingContact ? (
+
+      {/* 2. CỘT PHẢI: NỘI DUNG CHÍNH */}
+      <div className="d-flex flex-column flex-grow-1 h-100">
+        <div className="flex-grow-1 h-100">
+          
+          {/* LOGIC CHUYỂN ĐỔI GIAO DIỆN (View Switching) */}
+          
+          {viewMode === 'profile' ? (
+            // VIEW 1: TRANG CÁ NHÂN
+            <UserProfile user={user} setUser={setUser} />
+          ) : isAddingNew || editingContact ? (
+            // VIEW 2: FORM THÊM/SỬA
             <ContactForm
-              onSuccess={onSuccess}
+              onSuccess={() => {
+                  fetchContacts();
+                  setIsAddingNew(false);
+                  setEditingContact(null);
+                  setSelectedContact(null);
+              }}
               editingContact={editingContact}
               setEditingContact={setEditingContact}
               isAddingNew={isAddingNew}
               setIsAddingNew={setIsAddingNew}
             />
           ) : selectedContact ? (
-            <div className="card card-body shadow-sm rounded-4 border border-0">
+            // VIEW 3: CHI TIẾT LIÊN HỆ
+            <div className="card card-body shadow-sm rounded-4 border border-0 h-100">
               <div className="d-flex align-items-center mb-3">
                 <div
                   className="cardAvatar pointer rounded p-2 position-relative"
                   onClick={() => {
-                    handleUploadAvatar
                     setShowAvatarModal(true);
                     setModalAvatarPreview(selectedContact.link_img);
                     setModalAvatarFile(null);
                   }}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onPaste={handlePaste}
                 >
-                  <img
-                    src={selectedContact.link_img}
-                    className="rounded-circle me-2"
-                    alt="avatar"
-                    width="50"
-                    height="50"
-                  />
-                  <div className="iconChangeAvatar">
-                    <LuImageUp />
-                  </div>
+                  <img src={selectedContact.link_img} className="rounded-circle me-2" alt="avatar" width="60" height="60" />
+                  <div className="iconChangeAvatar"><LuImageUp /></div>
                 </div>
-                <h5 className="fw-bold mb-0">{selectedContact.name}</h5>
-                <FaCaretDown
-                  className="ms-2 pointer"
-                  onClick={() => setShowContactGroupDropdown(!showContactGroupDropdown)}
-                />
+                <h3 className="fw-bold mb-0">{selectedContact.name}</h3>
+                <FaCaretDown className="ms-2 pointer" onClick={() => setShowContactGroupDropdown(!showContactGroupDropdown)} />
               </div>
+
+              {/* Dropdown chọn nhóm cho contact */}
               {showContactGroupDropdown && (
-                <div
-                  className="dropdown-menu d-block position-absolute mb-3 border border-0 bg-secondary-subtle rounded-4 shadow-sm p-1"
-                  style={{ top: "55px", left: "245px" }}
-                >
+                <div className="dropdown-menu d-block position-absolute bg-white shadow p-2 rounded-4" style={{ top: "130px", left: "280px", zIndex: 10 }}>
                   {groups.map((group) => (
-                    <div
-                      key={group}
-                      className="dropdown-item d-flex align-items-center pointer gap-1 rounded-4"
-                      onClick={() => handleToggleGroup(selectedContact, group)}
-                    >
-                      <PiTagSimpleFill style={{ color: groupColors[group] }} />
-                      {group}
-                      {selectedContact.groups_lh.includes(group) && <span className="ms-auto">✓</span>}
+                    <div key={group} className="dropdown-item pointer" onClick={() => handleToggleGroup(selectedContact, group)}>
+                      <PiTagSimpleFill style={{ color: groupColors[group] }} /> {group}
+                      {selectedContact.groups_lh.includes(group) && <span className="ms-auto float-end">✓</span>}
                     </div>
                   ))}
-                  <div
-                    className="dropdown-item d-flex align-items-center pointer gap-1 rounded-4 text-danger"
-                    onClick={handleRemoveAvatar}
-                  >
-                    <FaRegTrashAlt /> Xóa ảnh
+                  <div className="dropdown-item text-danger pointer mt-1 border-top pt-1" onClick={() => {
+                       // Gọi API reset avatar (logic cũ)
+                       handleModalUpload(); // Hoặc viết hàm riêng reset avatar
+                  }}>
+                     <CiCircleRemove/> Xóa ảnh
                   </div>
                 </div>
               )}
-              <h5 className="fw-medium fs-3 m-auto mb-5 border border-0">Thông tin</h5>
+
+              <h5 className="fw-medium fs-3 m-auto mb-5 border-bottom pb-2">Thông tin</h5>
+              
               <div className="row g-3">
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Tên*</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.name}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Ngày sinh</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.birthday ? selectedContact.birthday : ""}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">SĐT di động</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.phone}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Email</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.email}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Địa chỉ</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.address ? selectedContact.address : ""}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Quốc tịch</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.nationality ? selectedContact.nationality : ""}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Dân tộc</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.ethnicity ? selectedContact.ethnicity : ""}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Công việc</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.job ? selectedContact.job : ""}
-                    readOnly
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-medium">Giới tính</label>
-                  <input
-                    placeholder="Điền thông tin tại đây"
-                    className="form-control rounded-pill border border-dark inputA"
-                    value={selectedContact.gender ? selectedContact.gender : ""}
-                    readOnly
-                  />
-                </div>
+                <div className="col-md-4"><label className="form-label fw-medium">Tên*</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.name} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">Ngày sinh</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.birthday || ""} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">SĐT</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.phone} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">Email</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.email} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">Địa chỉ</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.address || ""} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">Quốc tịch</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.nationality || ""} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">Dân tộc</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.ethnicity || ""} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">Công việc</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.job || ""} readOnly /></div>
+                <div className="col-md-4"><label className="form-label fw-medium">Giới tính</label><input className="form-control rounded-pill border-dark inputA" value={selectedContact.gender || ""} readOnly /></div>
               </div>
-              <div className="mt-3" >
+              
+              <div className="mt-3">
                 <label className="form-label fw-medium">Ghi chú thêm</label>
-                <textarea
-                  placeholder="Điền thông tin tại đây"
-                  className="form-control rounded-4 border border-dark inputA"
-                  value={selectedContact.note}
-                  readOnly
-                  rows={3}
-                  style={{height: "150px"}}
-                />
+                <textarea className="form-control rounded-4 border-dark inputA" value={selectedContact.note} readOnly rows={3} style={{ height: "100px" }} />
               </div>
-              <div className="mt-3 d-flex justify-content-center gap-4">
-                <button
-                  className={`btn ${selectedContact.favourite ? "btn-warning" : "btn-outline-warning"} rounded-pill px-3`}
-                  onClick={() => handleToggleFavourite(selectedContact)}
-                >
+
+              <div className="mt-4 d-flex justify-content-center gap-3">
+                <button className={`btn ${selectedContact.favourite ? "btn-warning" : "btn-outline-warning"} rounded-pill px-3`} onClick={() => handleToggleFavourite(selectedContact)}>
                   <FaStar className="me-2" /> {selectedContact.favourite ? "Bỏ yêu thích" : "Yêu thích"}
                 </button>
-                <button
-                  className="btn btn-dark rounded-pill px-3"
-                  onClick={() => handleEdit(selectedContact)}
-                >
+                <button className="btn btn-dark rounded-pill px-3" onClick={() => handleEdit(selectedContact)}>
                   <FaRegEdit className="me-2" /> Sửa thông tin
                 </button>
-                <button
-                  className="btn btn-danger rounded-pill px-3"
-                  onClick={() => handleDelete(selectedContact.id)}
-                >
-                  <FaRegTrashAlt className="me-2" /> Xóa bỏ khỏi danh sách
+                <button className="btn btn-danger rounded-pill px-3" onClick={() => handleDelete(selectedContact.id)}>
+                  <FaRegTrashAlt className="me-2" /> Xóa bỏ
                 </button>
               </div>
             </div>
           ) : (
+            // VIEW 4: MÀN HÌNH CHÀO MỪNG
             <div className="d-flex flex-column justify-content-center align-items-center bg-white h-100 rounded-4 shadow">
-              <div className="fs-3 fw-semibold">
-                Chào mừng bạn quay lại với sổ tay liên lạc
-              </div>
-              <div className="">
-                <img className="" src="/img/imgFirst.png" alt="" width={777} />
-              </div>
+              <div className="fs-3 fw-semibold">Chào mừng bạn quay lại với sổ tay liên lạc</div>
+              <img src="/img/imgFirst.png" alt="" width={500} style={{maxWidth: '100%'}} />
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal để upload avatar */}
+      {/* MODAL UPLOAD AVATAR CONTACT */}
       {showAvatarModal && (
-        <div className="modal" tabIndex="-1" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Cập nhật ảnh đại diện</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => {
-                    setShowAvatarModal(false);
-                    setModalAvatarFile(null);
-                    setModalAvatarPreview(null);
-                  }}
-                ></button>
+                <button type="button" className="btn-close" onClick={() => setShowAvatarModal(false)}></button>
               </div>
-              <div className="modal-body">
-                <div
-                  className="mb-3 d-flex align-items-center border border-dashed border-2 rounded p-2"
-                  onDrop={handleModalDrop}
-                  onDragOver={handleModalDragOver}
-                  onPaste={handleModalPaste}
-                  style={{ cursor: "pointer", backgroundColor: "#f8f9fa", minHeight: "200px", justifyContent: "center" }}
-                >
-                  {modalAvatarPreview ? (
-                    <img
-                      src={modalAvatarPreview}
-                      className="rounded-circle"
-                      alt="avatar preview"
-                      style={{ width: "180px", height: "170px" }}
-                    />
-                  ) : (
-                    <span>Kéo thả hoặc nhấp để chọn ảnh</span>
-                  )}
+              <div className="modal-body text-center">
+                <div className="mb-3 border border-dashed p-3 rounded bg-light">
+                   {modalAvatarPreview ? (
+                      <img src={modalAvatarPreview} className="rounded-circle" width="150" height="150" alt="Preview" />
+                   ) : <span>Chọn ảnh để xem trước</span>}
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={handleModalAvatarChange}
-                  id="modalAvatarInput"
-                />
-                <button
-                  className="btn btn-primary mt-2"
-                  onClick={() => document.getElementById("modalAvatarInput").click()}
-                >
-                  Chọn file
-                </button>
-                {modalAvatarFile && (
-                  <button
-                    className="btn btn-danger mt-2 ms-2"
-                    onClick={handleModalRemoveAvatar}
-                  >
-                    <CiCircleRemove /> Xóa
-                  </button>
-                )}
+                <input type="file" className="form-control" accept="image/*" onChange={(e) => {
+                    if(e.target.files[0]) {
+                        setModalAvatarFile(e.target.files[0]);
+                        setModalAvatarPreview(URL.createObjectURL(e.target.files[0]));
+                    }
+                }} />
+                {modalAvatarFile && <button className="btn btn-danger btn-sm mt-2" onClick={handleModalRemoveAvatar}><CiCircleRemove/> Hủy chọn</button>}
               </div>
               <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowAvatarModal(false);
-                    setModalAvatarFile(null);
-                    setModalAvatarPreview(null);
-                  }}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleModalUpload}
-                  disabled={!modalAvatarFile}
-                >
-                  Upload
-                </button>
+                <button className="btn btn-secondary" onClick={() => setShowAvatarModal(false)}>Đóng</button>
+                <button className="btn btn-primary" onClick={handleModalUpload} disabled={!modalAvatarFile}>Lưu thay đổi</button>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const contactRoutes = require('./routes/contacts');
+const groupRoutes = require('./routes/groups');
 const path = require('path');
 
 dotenv.config();
@@ -20,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
-
+app.use('/api/groups', groupRoutes);
 
 app.get('/', (req, res) => res.send('Contact Book API running'));
 

@@ -23,7 +23,7 @@ export default function ContactsList({ setUser }) {
   const [filter, setFilter] = useState("thongthuong");
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [showContactGroupDropdown, setShowContactGroupDropdown] = useState(false);
-  const [groups] = useState(["Bạn bè", "Người thân", "Gia đình", "Khách hàng", "Sếp", "Đồng nghiệp"]);
+  const [groups, setGroups] = useState(["Người lạ", "Bạn bè", "Người thân", "Gia đình", "Khách hàng", "Sếp", "Đồng nghiệp"]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [nameGroup, setNameGroup] = useState("Nhóm");
 
@@ -32,17 +32,37 @@ export default function ContactsList({ setUser }) {
   const [modalAvatarPreview, setModalAvatarPreview] = useState(null);
   const [modalAvatarFile, setModalAvatarFile] = useState(null);
 
-  const groupColors = {
+  const [groupColorsState, setGroupColorsState] = useState({
+    "Người lạ": "#808080",
     "Bạn bè": "#00FFFF",
     "Người thân": "#FF0000",
     "Gia đình": "#FF69B4",
     "Khách hàng": "#00FF00",
-    Sếp: "#0000FF",
+    "Sếp": "#0000FF",
     "Đồng nghiệp": "#FF8C00",
-  };
+  });``
 
+  const [groupIdMap, setGroupIdMap] = useState({});
 
-  
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const res = await API.get("/groups?user_id=1");
+        const colors = {};
+        const ids = {};
+        res.data.forEach(g => {
+          colors[g.name] = g.color || "#000000";
+          ids[g.name] = g.id;
+        });
+        setGroups(res.data.map(g => g.name));
+        setGroupColorsState(colors);
+        setGroupIdMap(ids);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchGroups();
+    }, []);
 
   // Tải danh sách liên hệ
   const fetchContacts = async () => {
@@ -414,7 +434,7 @@ export default function ContactsList({ setUser }) {
                 {nameGroup} <FaCaretDown className="ms-1" />
               </div>
             </div>
-            {showGroupDropdown && (
+            {/* {showGroupDropdown && (
               <div
                 className="dropdown-menu d-block position-absolute mb-3 border border-0 bg-secondary-subtle rounded-4 p-1 shadow-lg"
                 style={{ top: "150px", left: "300px" }}
@@ -435,7 +455,117 @@ export default function ContactsList({ setUser }) {
                   </div>
                 ))}
               </div>
+            )} */}
+            {showGroupDropdown && (
+              <div
+                className="dropdown-menu d-block position-absolute mb-3 border border-0 bg-secondary-subtle rounded-4 p-1 shadow-lg"
+                style={{ top: "150px", left: "300px" }}
+              >
+                {groups.map((group) => (
+                  <div
+                    key={group}
+                    className="dropdown-item d-flex align-items-center justify-content-between pointer rounded-4 gap-1"
+                    style={{ backgroundColor: "#f8f9fa" }}
+                  >
+                    <div
+                      className="d-flex align-items-center gap-1"
+                      onClick={() => {
+                        setFilter("nhom");
+                        setSelectedGroup(group);
+                        setNameGroup(group);
+                        setShowGroupDropdown(false);
+                      }}
+                    >
+                      <PiTagSimpleFill style={{ color: groupColorsState[group] || "#000000" }} />
+                      {group}
+                    </div>
+
+                    {/* Nút hành động */}
+                    <div className="d-flex gap-1">
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={async (e) => {
+                          e.stopPropagation(); // tránh chọn nhóm
+                          const newName = prompt("Nhập tên nhóm mới:", group);
+                          if (!newName) return;
+                          const newColor = prompt("Nhập mã màu cho nhóm (vd: #FF0000) hoặc để trống:", groupColorsState[group]);
+                          try {
+                            await API.put(`/groups/${groupIdMap[group]}`, {
+                              name: newName,
+                              color: newColor || "#000000"
+                            });
+                            // Cập nhật frontend
+                            setGroups(groups.map(g => g === group ? newName : g));
+                            setGroupColorsState({ ...groupColorsState, [newName]: newColor || "#000000" });
+                            if (selectedGroup === group) setSelectedGroup(newName);
+                            toast.success("Cập nhật nhóm thành công!");
+                          } catch (err) {
+                            console.error(err);
+                            toast.error("Lỗi khi cập nhật nhóm!");
+                          }
+                        }}
+                      >
+                        Đổi tên
+                      </button>
+
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!window.confirm(`Bạn có chắc muốn xóa nhóm "${group}" không?`)) return;
+                          try {
+                            await API.delete(`/groups/${groupIdMap[group]}`);
+                            setGroups(groups.filter(g => g !== group));
+                            const updatedColors = { ...groupColorsState };
+                            delete updatedColors[group];
+                            setGroupColorsState(updatedColors);
+                            if (selectedGroup === group) setSelectedGroup(null);
+                            toast.success("Xóa nhóm thành công!");
+                          } catch (err) {
+                            console.error(err);
+                            toast.error("Lỗi khi xóa nhóm!");
+                          }
+                        }}
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Thêm nhóm mới */}
+                <div
+                  className="dropdown-item d-flex align-items-center pointer gap-1 rounded-4 text-primary fw-bold"
+                  onClick={() => {
+                    const name = prompt("Nhập tên nhóm mới:");
+                    if (!name) return;
+                    const color = prompt("Nhập mã màu cho nhóm (vd: #FF0000) hoặc để trống:");
+
+                    const addGroupAsync = async () => {
+                      try {
+                        const res = await API.post("/groups", { user_id: 1, name, color });
+                        setGroups(prev => Array.from(new Set([...prev, name])));
+                        setGroupColorsState({ ...groupColorsState, [name]: color || "#000000" });
+                        setGroupIdMap({ ...groupIdMap, [name]: res.data.id });
+                        setSelectedGroup(name);
+                        setFilter("nhom");
+                        setNameGroup(name);
+                        setShowGroupDropdown(false);
+                        toast.success("Đã thêm nhóm!");
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Lỗi khi tạo nhóm mới!");
+                      }
+                    };
+
+                    addGroupAsync();
+                  }}
+                >
+                  Thêm nhóm
+                </div>
+              </div>
             )}
+
           </div>
           <div className="flex-grow-1 overflow-auto px-3" style={{ maxHeight: "calc(100vh - 200px)" }}>
             {Object.keys(groupedContacts)
@@ -444,7 +574,7 @@ export default function ContactsList({ setUser }) {
                 <div key={letter}>
                   <div className="p-2 text-dark fw-bold">{letter}</div>
                   <ul className="list-group list-group-flush gap-2">
-                    {groupedContacts[letter].map((c) => (
+                    {/* {groupedContacts[letter].map((c) => (
                       <li
                         key={c.id}
                         className={`list-group-item list-group-item-action bg-dark bg-gradient bg-opacity-25 fw-medium rounded-pill d-flex align-items-center p-0 px-3${
@@ -467,7 +597,7 @@ export default function ContactsList({ setUser }) {
                               <div className="d-flex">{c.phone}</div>
                             ) : (
                               <div className="d-flex flex-row gap-2">
-                                <PiTagSimpleFill style={{ color: groupColors[c.groups_lh[0]], fontSize: "18px" }} />
+                                <PiTagSimpleFill style={{ color: groupColorsState[c.groups_lh[0]], fontSize: "18px" }} />
                                 <div>{c.phone}</div>
                               </div>
                             )}
@@ -475,7 +605,46 @@ export default function ContactsList({ setUser }) {
                         </div>
                         {c.favourite && <FaStar className="ms-auto fs-5" style={{color: "#f1f111ff"}}/>}
                       </li>
+                    ))} */}
+                    {groupedContacts[letter].map((c) => (
+                      <li
+                        key={c.id}
+                        className={`list-group-item list-group-item-action bg-dark bg-gradient bg-opacity-25 fw-medium rounded-pill d-flex align-items-center p-0 px-3`}
+                        onClick={() => handleSelectContact(c)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <img
+                          src={c.link_img}
+                          className="rounded-circle me-2"
+                          alt="avatar"
+                          width="30"
+                          height="30"
+                        />
+                        <div className="d-flex flex-column" style={{ fontSize: "14px" }}>
+                          <div className="fw-semibold">{c.name}</div>
+                          <div className="d-flex flex-row align-items-center gap-2">
+                            {(() => {
+                              const groupName = c.groups_lh.length > 0 ? c.groups_lh[0] : "Người lạ";
+                              const color = c.groups_lh.length > 0 ? groupColorsState[groupName] : "#808080";
+                              return (
+                                <svg
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 256 256"
+                                  fill={color}
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path d="M246.66,123.56,201,55.13A15.94,15.94,0,0,0,187.72,48H40A16,16,0,0,0,24,64V192a16,16,0,0,0,16,16H187.72A16,16,0,0,0,201,200.88h0l45.63-68.44A8,8,0,0,0,246.66,123.56Z"></path>
+                                </svg>
+                              );
+                            })()}
+                            <div>{c.groups_lh.length > 0 ? c.groups_lh[0] : "Người lạ"}</div>
+                          </div>
+                        </div>
+                        {c.favourite && <FaStar className="ms-auto fs-5" style={{ color: "#f1f111ff" }} />}
+                      </li>
                     ))}
+
                   </ul>
                 </div>
               ))}
@@ -538,7 +707,7 @@ export default function ContactsList({ setUser }) {
                   className="dropdown-menu d-block position-absolute mb-3 border border-0 bg-secondary-subtle rounded-4 shadow-sm p-1"
                   style={{ top: "55px", left: "245px" }}
                 >
-                  {groups.map((group) => (
+                  {/* {groups.map((group) => (
                     <div
                       key={group}
                       className="dropdown-item d-flex align-items-center pointer gap-1 rounded-4"
@@ -548,7 +717,19 @@ export default function ContactsList({ setUser }) {
                       {group}
                       {selectedContact.groups_lh.includes(group) && <span className="ms-auto">✓</span>}
                     </div>
+                  ))} */}
+                  {groups.map((group) => (
+                    <div
+                      key={group}
+                      className="dropdown-item d-flex align-items-center pointer gap-1 rounded-4"
+                      onClick={() => handleToggleGroup(selectedContact, group)}
+                    >
+                      <PiTagSimpleFill style={{ color: groupColorsState[group] }} />
+                      {group}
+                      {selectedContact.groups_lh.includes(group) && <span className="ms-auto">✓</span>}
+                    </div>
                   ))}
+
                   <div
                     className="dropdown-item d-flex align-items-center pointer gap-1 rounded-4 text-danger"
                     onClick={handleRemoveAvatar}

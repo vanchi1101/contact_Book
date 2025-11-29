@@ -464,7 +464,7 @@ export default function ContactsList({ setUser }) {
                 {groups.map((group) => (
                   <div
                     key={group}
-                    className="dropdown-item d-flex align-items-center justify-content-between pointer rounded-4 gap-1"
+                    className="dropdown-item d-flex align-items-center justify-content-between pointer rounded-4 gap-1 mb-1"
                     style={{ backgroundColor: "#f8f9fa" }}
                   >
                     <div
@@ -483,7 +483,7 @@ export default function ContactsList({ setUser }) {
                     {/* Nút hành động */}
                     <div className="d-flex gap-1">
                       <button
-                        className="btn btn-sm btn-outline-primary"
+                        className="btn btn-sm btn-outline-primary rounded-pill"
                         onClick={async (e) => {
                           e.stopPropagation(); // tránh chọn nhóm
                           const newName = prompt("Nhập tên nhóm mới:", group);
@@ -509,7 +509,7 @@ export default function ContactsList({ setUser }) {
                       </button>
 
                       <button
-                        className="btn btn-sm btn-outline-danger"
+                        className="btn btn-sm btn-outline-danger rounded-pill"
                         onClick={async (e) => {
                           e.stopPropagation();
                           if (!window.confirm(`Bạn có chắc muốn xóa nhóm "${group}" không?`)) return;

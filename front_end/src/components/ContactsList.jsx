@@ -655,7 +655,11 @@ export default function ContactsList({ setUser }) {
           </div>
         </div>
         <div className="w-100 p-2">
-          <div className="text-dark shadow text-center p-2 rounded-pill mt-2 bgLout fw-medium pointer" onClick={() => setUser(null)}>
+          <div className="text-dark shadow text-center p-2 rounded-pill mt-2 bgLout fw-medium pointer" onClick={() => {
+            setUser(null)
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
+          }}>
             Đăng xuất
           </div>
         </div>

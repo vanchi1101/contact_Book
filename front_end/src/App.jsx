@@ -15,23 +15,22 @@ function App() {
 
   return (
     <div className="">
-        <Router>
-          <Routes>
-            {/* Nếu chưa login thì điều hướng sang /login */}
-            <Route
-              path="/"
-              element={
-                user ? (
-                  <ContactsList user={user} setUser={setUser} />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route path="/login" element={<Login onLogin={u => setUser(u)} />} />
-            <Route path="/register" element={<Register />} />
-          </Routes>
-        </Router>
+
+        <Routes>
+          {/* Nếu chưa login thì điều hướng sang /login */}
+          <Route
+            path="/"
+            element={
+              user ? (
+                <ContactsList user={user} setUser={setUser} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+          <Route path="/login" element={<Login onLogin={u => setUser(u)} />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
       
     </div>
     
